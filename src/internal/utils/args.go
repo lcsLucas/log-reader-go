@@ -10,14 +10,14 @@ import (
 func ReadArgs(cLog *config.LogFile) error {
 	var err error
 
-	filenameArg := flag.String("path", "", "File path")
-	strLogStartTimeArg := flag.String("start", "", "Start of log period")
-	strLogEndTimeArg := flag.String("end", "", "End of log period")
+	filenameArg := flag.String("path", "", "File path argument")
+	strLogStartTimeArg := flag.String("start", "", "Log start date argument (2006-01-02 OR 2006-01-02T15:04:05)")
+	strLogEndTimeArg := flag.String("end", "", "Log end date (2006-01-02 OR 2006-01-02T15:04:05) argument")
 
 	flag.Parse()
 
 	if len(*filenameArg) <= 0 {
-		return errors.New("parameter \"path\" missing")
+		return errors.New("give command line \"path\" argument")
 	}
 
 	cLog.Filename = *filenameArg
@@ -31,7 +31,7 @@ func ReadArgs(cLog *config.LogFile) error {
 			logStartTime, err = time.Parse("2006-01-02", *strLogStartTimeArg)
 
 			if err != nil {
-				return errors.New("arg \"Start Time\"")
+				return errors.New("could not able to parse the start time")
 			}
 		}
 
@@ -47,7 +47,7 @@ func ReadArgs(cLog *config.LogFile) error {
 			logEndTime, err = time.Parse("2006-01-02", *strLogEndTimeArg)
 
 			if err != nil {
-				return errors.New("arg \"End Time\"")
+				return errors.New("could not able to parse the finish time")
 			}
 		}
 

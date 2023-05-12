@@ -34,8 +34,18 @@ func main() {
 
 	defer f.Close()
 
-	/** Ler a primeira linha e verificar se o inicio de tempo está depois */
+	filestat, err := f.Stat()
 
+	if err != nil {
+		color.PrintError(err.Error())
+		return
+	}
+
+	cLog.Name = filestat.Name()
+	cLog.Size = filestat.Size()
+
+	/** Ler a primeira linha e verificar se o inicio de tempo está depois */
+	//
 	/** Ler a última linha e verificar se o final de tempo está antes. */
 
 }
