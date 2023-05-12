@@ -1,0 +1,10 @@
+FROM golang:1.20.3-alpine
+
+ARG user=lucas
+ARG uid=1000
+
+WORKDIR /go/src/log-reader-go
+
+# RUN "go mod tidy"
+
+RUN USER=${user}

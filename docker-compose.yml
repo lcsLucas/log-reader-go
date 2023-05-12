@@ -1,0 +1,13 @@
+version: "3.3"
+services:
+  reader:
+    build:
+      context: .
+      dockerfile: "./Dockerfile.development"
+    container_name: golang
+    stdin_open: true
+    tty: true
+    restart: always
+    volumes:
+      - ./src:/go/src/log-reader-go
+      - ./data:/var/log/log-reader-go
