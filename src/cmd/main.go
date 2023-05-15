@@ -44,9 +44,36 @@ func main() {
 	cLog.Name = filestat.Name()
 	cLog.Size = filestat.Size()
 
+	/** */
+
+	/**
+	if cLog.LogStartTime != nil {
+		// checa o primeiro registro do arquivo (Data)
+	}
+	*/
+
+	/**
+	if cLog.LogEndTime != nil {
+		// checa o último registro do arquivo (Data)
+	}
+	*/
+
+	offset := cLog.Size - 1
+
+	lastLine, err := utils.ReadLine(f, uint64(offset), true)
+
+	if err != nil {
+		color.PrintError(err.Error())
+		return
+	}
+
+	utils.ParsingLineLog(string(lastLine))
+
 	/** Ler a primeira linha e verificar se o inicio de tempo está depois */
 	//
 	/** Ler a última linha e verificar se o final de tempo está antes. */
+
+	// fmt.Println(cLog)
 
 }
 
