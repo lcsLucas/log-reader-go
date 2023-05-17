@@ -2,7 +2,7 @@
 
 A simple service implemented in Golang to process large log files (Apache), storing them in an ElasticSearch database and visualizing them in Grafana.
 
-# Uso
+# Usage
 
 To build or run the `go run`, the following parameters must be provided:
 
