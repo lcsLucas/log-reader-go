@@ -10,4 +10,5 @@ services:
     restart: always
     volumes:
       - ./src:/go/src/log-reader-go
+      - ./.vscode:/go/src/log-reader-go
       - ./data:/var/log/log-reader-go

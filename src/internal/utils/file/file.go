@@ -1,4 +1,4 @@
-package utils
+package file
 
 import (
 	"fmt"
@@ -41,8 +41,10 @@ func ReadLine(f *os.File, offset uint64, back bool) (b []byte, err error) {
 
 	rns := []byte(s)
 
-	for i, j := 0, len(rns)-1; i < j; i, j = i+1, j-1 {
-		rns[i], rns[j] = rns[j], rns[i]
+	if back {
+		for i, j := 0, len(rns)-1; i < j; i, j = i+1, j-1 {
+			rns[i], rns[j] = rns[j], rns[i]
+		}
 	}
 
 	return rns, err

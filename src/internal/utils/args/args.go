@@ -1,4 +1,4 @@
-package utils
+package args
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func ReadArgs(cLog *config.LogFile) error {
+func Read(cLog *config.LogFile) error {
 	var err error
 
 	filenameArg := flag.String("path", "", "File path argument")
@@ -55,5 +55,29 @@ func ReadArgs(cLog *config.LogFile) error {
 
 	}
 
+	if cLog.LogStartTime != nil && cLog.LogEndTime != nil && cLog.LogEndTime.Before(*cLog.LogStartTime) {
+		return errors.New("end time cannot be earlier than start time")
+	}
+
 	return nil
 }
+
+/**
+func CheckStartTimeLog(t *time.Time, rec *config.LogRecord) error {
+
+	if rec.Date.Equal(*t) || rec.Date.After(*t) {
+		return errors.New("log time cannot be earlier than start time")
+	}
+
+	return nil
+}
+
+func CheckEndTimeLog(t *time.Time, rec *config.LogRecord) error {
+
+	if rec.Date.Equal(*t) || rec.Date.Before(*t) {
+		return errors.New("log time cannot be after than end time")
+	}
+
+	return nil
+}
+*/

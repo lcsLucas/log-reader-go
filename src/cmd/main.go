@@ -1,9 +1,13 @@
 package main
 
 import (
+	"errors"
 	"log-reader-go/internal/config"
-	"log-reader-go/internal/utils"
+	"log-reader-go/internal/utils/args"
+	"log-reader-go/internal/utils/file"
+	"log-reader-go/internal/utils/regex"
 	"log-reader-go/pkg/color"
+	file2 "log-reader-go/pkg/file"
 	"os"
 	"time"
 )
@@ -17,7 +21,7 @@ func main() {
 	defer end()
 
 	/** Lendo os argumentos passados */
-	err := utils.ReadArgs(&cLog)
+	err := args.Read(&cLog)
 
 	if err != nil {
 		color.PrintError(err.Error())
@@ -44,36 +48,58 @@ func main() {
 	cLog.Name = filestat.Name()
 	cLog.Size = filestat.Size()
 
-	/** */
-
-	/**
+	/** Validando a data ínicio com os registros do log */
 	if cLog.LogStartTime != nil {
-		// checa o primeiro registro do arquivo (Data)
-	}
-	*/
 
-	/**
+		offset := cLog.Size - 1
+
+		lastLine, err := file.ReadLine(f, uint64(offset), true)
+
+		if err != nil {
+			color.PrintError(err.Error())
+			return
+		}
+
+		reg, err := regex.LogParse(string(lastLine))
+
+		if err != nil {
+			color.PrintError(err.Error())
+			return
+		}
+
+		if reg.Date.Before(*cLog.LogStartTime) {
+			color.PrintError(errors.New("log time cannot be earlier than start time"))
+			return
+		}
+
+	}
+
 	if cLog.LogEndTime != nil {
-		// checa o último registro do arquivo (Data)
+
+		offset := 0
+
+		firstLine, err := file.ReadLine(f, uint64(offset), false)
+
+		if err != nil {
+			color.PrintError(err.Error())
+			return
+		}
+
+		reg, err := regex.LogParse(string(firstLine))
+
+		if err != nil {
+			color.PrintError(err.Error())
+			return
+		}
+
+		if reg.Date.After(*cLog.LogEndTime) {
+			color.PrintError(errors.New("log time cannot be earlier than start time"))
+			return
+		}
+
 	}
-	*/
 
-	offset := cLog.Size - 1
-
-	lastLine, err := utils.ReadLine(f, uint64(offset), true)
-
-	if err != nil {
-		color.PrintError(err.Error())
-		return
-	}
-
-	utils.ParsingLineLog(string(lastLine))
-
-	/** Ler a primeira linha e verificar se o inicio de tempo está depois */
-	//
-	/** Ler a última linha e verificar se o final de tempo está antes. */
-
-	// fmt.Println(cLog)
+	file2.ProcessFile(f, cLog.LogStartTime, cLog.LogEndTime)
 
 }
 

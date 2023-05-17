@@ -1,12 +1,20 @@
 package color
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
+
+var m sync.Mutex
 
 func print(color string, args ...interface{}) {
+	m.Lock()
+	defer m.Unlock()
+
 	fmt.Print(color)
-	fmt.Print(args...)
+	fmt.Println(args...)
 	fmt.Print(string(Color.Reset))
-	fmt.Println()
+
 }
 
 func PrintRed(args ...interface{}) {
