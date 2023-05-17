@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"io"
 	"log-reader-go/pkg/color"
+	"math"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -13,15 +15,16 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 	linesPool := sync.Pool{
 		New: func() interface{} {
-			lines := make([]byte, 250*1024)
-			return lines
+			l := new([]byte)
+			*l = make([]byte, 1024*1024)
+
+			return l
 		},
 	}
 
 	stringPool := sync.Pool{
 		New: func() interface{} {
-			lines := ""
-			return lines
+			return new(string)
 		},
 	}
 
@@ -30,10 +33,11 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 	var wg sync.WaitGroup
 
 	for {
-		buf := linesPool.Get().([]byte)
+		buf := linesPool.Get().(*[]byte)
 
-		n, err := r.Read(buf)
-		buf = buf[:n]
+		b := *buf
+		n, err := r.Read(b)
+		*buf = b[:n]
 
 		if err != nil && err != io.EOF {
 			color.PrintYellow(err, " ", n)
@@ -44,16 +48,15 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 			break
 		}
 
-		// lê um pedaço até encontrar '\n' para juntar no buf, para não acontecer de ter lido apenas uma parte da linha, cortando o registro.
+		// lê o pedaço até o '\n' e junta com o outro pedaço lido no buf,
+		//evitando assim de cortar registros nas leituras por bytes
 		readUntillNewline, err := r.ReadBytes('\n')
 
-		// junta as partes lida com buffer e read bytes
 		if err != io.EOF {
-			buf = append(buf, readUntillNewline...)
+			*buf = append(*buf, readUntillNewline...)
 		}
 
 		wg.Add(1)
-		defer wg.Wait()
 
 		go func() {
 			ParserChunk(buf, &linesPool, &stringPool, startTime, endTime)
@@ -62,9 +65,48 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 	}
 
+	wg.Wait()
 	return nil
 }
 
-func ParserChunk(chunk []byte, linesPool *sync.Pool, stringPool *sync.Pool, startTime *time.Time, endTime *time.Time) {
-	// color.PrintPurple(string(chunk[:1]), " | ")
+func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, startTime *time.Time, endTime *time.Time) {
+	var wg2 sync.WaitGroup
+
+	logs := stringPool.Get().(*string)
+	*logs = string(*chunk)
+
+	linesPool.Put(chunk)
+
+	logsSlice := strings.Split(*logs, "\n")
+
+	stringPool.Put(logs)
+
+	chunkSize := 100
+	n := len(logsSlice)
+	noOfThread := n / chunkSize
+
+	if n%chunkSize != 0 {
+		noOfThread++
+	}
+
+	for i := 0; i < noOfThread; i++ {
+		wg2.Add(1)
+
+		go func(s int, e int) {
+			defer wg2.Done()
+
+			for i := s; i < e; i++ {
+				text := logsSlice[i]
+
+				if len(text) == 0 {
+					continue
+				}
+			}
+
+		}(i*chunkSize, int(math.Min(float64((i+1)*chunkSize), float64(len(logsSlice)))))
+	}
+
+	wg2.Wait()
+	logsSlice = nil
+
 }

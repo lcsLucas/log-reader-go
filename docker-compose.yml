@@ -8,6 +8,14 @@ services:
     stdin_open: true
     tty: true
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.00'
+          # memory: 50M
+        reservations:
+          cpus: '2.00'
+          # memory: 20M
     volumes:
       - ./src:/go/src/log-reader-go
       - ./.vscode:/go/src/log-reader-go

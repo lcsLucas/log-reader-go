@@ -74,6 +74,7 @@ func main() {
 
 	}
 
+	/** Validando a data final com os registros do log */
 	if cLog.LogEndTime != nil {
 
 		offset := 0

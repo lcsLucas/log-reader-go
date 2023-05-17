@@ -61,23 +61,3 @@ func Read(cLog *config.LogFile) error {
 
 	return nil
 }
-
-/**
-func CheckStartTimeLog(t *time.Time, rec *config.LogRecord) error {
-
-	if rec.Date.Equal(*t) || rec.Date.After(*t) {
-		return errors.New("log time cannot be earlier than start time")
-	}
-
-	return nil
-}
-
-func CheckEndTimeLog(t *time.Time, rec *config.LogRecord) error {
-
-	if rec.Date.Equal(*t) || rec.Date.Before(*t) {
-		return errors.New("log time cannot be after than end time")
-	}
-
-	return nil
-}
-*/
