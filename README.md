@@ -7,7 +7,7 @@ A simple service implemented in Golang to process large log files (Apache), stor
 To build or run with `go run`, the following parameters must be provided:
 
 `-path (Required):`
-File path argument
+Absolute file path argument
 
 `-start (Optional):`
 Log start date argument (2006-01-02 OR 2006-01-02T15:04:05)

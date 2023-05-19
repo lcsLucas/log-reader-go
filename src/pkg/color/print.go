@@ -17,6 +17,10 @@ func print(color string, args ...interface{}) {
 
 }
 
+func Reset() {
+	fmt.Print(string(Color.Reset))
+}
+
 func PrintRed(args ...interface{}) {
 	print(Color.Red, args...)
 }

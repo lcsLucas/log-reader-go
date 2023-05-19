@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log-reader-go/internal/config"
 	"log-reader-go/internal/utils/args"
 	"log-reader-go/internal/utils/file"
 	"log-reader-go/internal/utils/regex"
-	"log-reader-go/pkg/color"
 	file2 "log-reader-go/pkg/file"
 	"os"
+	"os/signal"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -24,7 +27,7 @@ func main() {
 	err := args.Read(&cLog)
 
 	if err != nil {
-		color.PrintError(err.Error())
+		log.Error(err.Error())
 		return
 	}
 
@@ -32,7 +35,7 @@ func main() {
 	f, err := os.Open(cLog.Filename)
 
 	if err != nil {
-		color.PrintError(err.Error())
+		log.Error(err.Error())
 		return
 	}
 
@@ -41,7 +44,7 @@ func main() {
 	filestat, err := f.Stat()
 
 	if err != nil {
-		color.PrintError(err.Error())
+		log.Error(err.Error())
 		return
 	}
 
@@ -56,19 +59,19 @@ func main() {
 		lastLine, err := file.ReadLine(f, uint64(offset), true)
 
 		if err != nil {
-			color.PrintError(err.Error())
+			log.Error(err.Error())
 			return
 		}
 
 		reg, err := regex.LogParse(string(lastLine))
 
 		if err != nil {
-			color.PrintError(err.Error())
+			log.Error(err.Error())
 			return
 		}
 
 		if reg.Date.Before(*cLog.LogStartTime) {
-			color.PrintError(errors.New("log time cannot be earlier than start time"))
+			log.Error(errors.New("log time cannot be earlier than start time"))
 			return
 		}
 
@@ -82,36 +85,44 @@ func main() {
 		firstLine, err := file.ReadLine(f, uint64(offset), false)
 
 		if err != nil {
-			color.PrintError(err.Error())
+			log.Error(err.Error())
 			return
 		}
 
 		reg, err := regex.LogParse(string(firstLine))
 
 		if err != nil {
-			color.PrintError(err.Error())
+			log.Error(err.Error())
 			return
 		}
 
 		if reg.Date.After(*cLog.LogEndTime) {
-			color.PrintError(errors.New("log time cannot be earlier than start time"))
+			log.Error(errors.New("log time cannot be earlier than start time"))
 			return
 		}
 
 	}
 
-	file2.ProcessFile(f, cLog.LogStartTime, cLog.LogEndTime)
+	ctx, cancel := context.WithCancel(context.Background())
 
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt)
+		<-ch
+		cancel()
+	}()
+
+	file2.ProcessFile(ctx, f, cLog.LogStartTime, cLog.LogEndTime)
 }
 
 func init() {
 	startTimeExec = time.Now()
-	color.PrintCyan("Started: ", startTimeExec.String())
+	log.Info("Started")
 }
 
 func end() {
 	diff := time.Since(startTimeExec)
 
-	color.PrintCyan("Ended: ", time.Now().String())
-	color.PrintYellow("Elapsed Time: ", diff.Truncate(time.Second).String())
+	log.Info("Ended")
+	log.Warning("Elapsed Time: ", diff.Truncate(time.Second).String())
 }

@@ -2,21 +2,27 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"io"
-	"log-reader-go/pkg/color"
-	"math"
+	"log-reader-go/internal/utils/regex"
 	"os"
-	"strings"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
-func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
+var m sync.Mutex
+
+var sem *semaphore.Weighted
+
+func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 	linesPool := sync.Pool{
 		New: func() interface{} {
 			l := new([]byte)
-			*l = make([]byte, 1024*1024)
+			*l = make([]byte, 15*1024*1024) //20MB
 
 			return l
 		},
@@ -32,7 +38,16 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 	var wg sync.WaitGroup
 
+	sem = semaphore.NewWeighted(150)
+
 	for {
+
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
 		buf := linesPool.Get().(*[]byte)
 
 		b := *buf
@@ -40,7 +55,7 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 		*buf = b[:n]
 
 		if err != nil && err != io.EOF {
-			color.PrintYellow(err, " ", n)
+			log.Warning(err, n)
 			continue
 		}
 
@@ -58,9 +73,16 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 		wg.Add(1)
 
+		sem.Acquire(ctx, 1)
+
 		go func() {
+
+			defer func() {
+				wg.Done()
+				sem.Release(1)
+			}()
+
 			ParserChunk(buf, &linesPool, &stringPool, startTime, endTime)
-			wg.Done()
 		}()
 
 	}
@@ -70,6 +92,7 @@ func ProcessFile(f *os.File, startTime *time.Time, endTime *time.Time) error {
 }
 
 func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, startTime *time.Time, endTime *time.Time) {
+
 	var wg2 sync.WaitGroup
 
 	logs := stringPool.Get().(*string)
@@ -77,36 +100,48 @@ func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, sta
 
 	linesPool.Put(chunk)
 
-	logsSlice := strings.Split(*logs, "\n")
+	logsSlice := splitLines(*logs)
+	// strings.Split(*logs, "\n")
 
 	stringPool.Put(logs)
 
-	chunkSize := 100
 	n := len(logsSlice)
-	noOfThread := n / chunkSize
 
-	if n%chunkSize != 0 {
-		noOfThread++
-	}
-
-	for i := 0; i < noOfThread; i++ {
+	for i := 0; i < n; i++ {
 		wg2.Add(1)
-
-		go func(s int, e int) {
+		go func(l string) {
 			defer wg2.Done()
 
-			for i := s; i < e; i++ {
-				text := logsSlice[i]
+			if len(l) != 0 {
+				_, err := regex.LogParse(l)
 
-				if len(text) == 0 {
-					continue
+				if err != nil {
+					m.Lock()
+
+					log.Error(err.Error())
+					log.Info(l)
+
+					m.Unlock()
 				}
 			}
-
-		}(i*chunkSize, int(math.Min(float64((i+1)*chunkSize), float64(len(logsSlice)))))
+		}(logsSlice[i])
 	}
 
 	wg2.Wait()
 	logsSlice = nil
+}
 
+func splitLines(s string) []string {
+	var lines []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
 }
