@@ -1,5 +1,17 @@
 version: "3.3"
 services:
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.7.1
+    container_name: elasticsearch
+    stdin_open: true
+    tty: true
+    restart: always
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    networks:
+      - reader-network
   reader:
     build:
       context: .
@@ -16,7 +28,12 @@ services:
         reservations:
           cpus: '2.00'
           # memory: 20M
+    networks:
+      - reader-network
     volumes:
       - ./src:/go/src/log-reader-go
       - ./.vscode:/go/src/log-reader-go
       - ./data:/var/log/log-reader-go
+networks:
+  reader-network:
+    driver: bridge

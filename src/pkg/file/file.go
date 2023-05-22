@@ -22,7 +22,7 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 	linesPool := sync.Pool{
 		New: func() interface{} {
 			l := new([]byte)
-			*l = make([]byte, 15*1024*1024) //20MB
+			*l = make([]byte, 7*1024*1024) //20MB
 
 			return l
 		},
@@ -38,7 +38,7 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 
 	var wg sync.WaitGroup
 
-	sem = semaphore.NewWeighted(150)
+	sem = semaphore.NewWeighted(120)
 
 	for {
 
