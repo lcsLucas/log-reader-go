@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log-reader-go/internal/config"
+	"log-reader-go/internal/log"
 	"log-reader-go/internal/utils/args"
 	"log-reader-go/internal/utils/file"
 	"log-reader-go/internal/utils/regex"
@@ -11,8 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -23,11 +22,13 @@ var (
 func main() {
 	defer end()
 
+	// elastic.Eae()
+
 	/** Lendo os argumentos passados */
 	err := args.Read(&cLog)
 
 	if err != nil {
-		log.Error(err.Error())
+		log.Logger.Error(err.Error())
 		return
 	}
 
@@ -35,7 +36,7 @@ func main() {
 	f, err := os.Open(cLog.Filename)
 
 	if err != nil {
-		log.Error(err.Error())
+		log.Logger.Error(err.Error())
 		return
 	}
 
@@ -44,7 +45,7 @@ func main() {
 	filestat, err := f.Stat()
 
 	if err != nil {
-		log.Error(err.Error())
+		log.Logger.Error(err.Error())
 		return
 	}
 
@@ -59,19 +60,19 @@ func main() {
 		lastLine, err := file.ReadLine(f, uint64(offset), true)
 
 		if err != nil {
-			log.Error(err.Error())
+			log.Logger.Error(err.Error())
 			return
 		}
 
 		reg, err := regex.LogParse(string(lastLine))
 
 		if err != nil {
-			log.Error(err.Error())
+			log.Logger.Error(err.Error())
 			return
 		}
 
 		if reg.Date.Before(*cLog.LogStartTime) {
-			log.Error(errors.New("log time cannot be earlier than start time"))
+			log.Logger.Error(errors.New("log time cannot be earlier than start time"))
 			return
 		}
 
@@ -85,19 +86,19 @@ func main() {
 		firstLine, err := file.ReadLine(f, uint64(offset), false)
 
 		if err != nil {
-			log.Error(err.Error())
+			log.Logger.Error(err.Error())
 			return
 		}
 
 		reg, err := regex.LogParse(string(firstLine))
 
 		if err != nil {
-			log.Error(err.Error())
+			log.Logger.Error(err.Error())
 			return
 		}
 
 		if reg.Date.After(*cLog.LogEndTime) {
-			log.Error(errors.New("log time cannot be earlier than start time"))
+			log.Logger.Error(errors.New("log time cannot be earlier than start time"))
 			return
 		}
 
@@ -117,12 +118,13 @@ func main() {
 
 func init() {
 	startTimeExec = time.Now()
-	log.Info("Started")
+	log.Logger.Info("Started")
 }
 
 func end() {
 	diff := time.Since(startTimeExec)
 
-	log.Info("Ended")
-	log.Warning("Elapsed Time: ", diff.Truncate(time.Second).String())
+	log.Logger.Info("\r")
+	log.Logger.Info("Ended")
+	log.Logger.Warning("Elapsed Time: ", diff.Truncate(time.Second).String())
 }

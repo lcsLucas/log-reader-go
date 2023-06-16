@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"log-reader-go/internal/log"
 	"log-reader-go/internal/utils/regex"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -17,12 +18,14 @@ var m sync.Mutex
 
 var sem *semaphore.Weighted
 
+var sem2 chan struct{}
+
 func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime *time.Time) error {
 
 	linesPool := sync.Pool{
 		New: func() interface{} {
 			l := new([]byte)
-			*l = make([]byte, 7*1024*1024) //20MB
+			*l = make([]byte, 500*1024) //20MB
 
 			return l
 		},
@@ -38,7 +41,9 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 
 	var wg sync.WaitGroup
 
-	sem = semaphore.NewWeighted(120)
+	sem = semaphore.NewWeighted(int64(runtime.NumCPU()))
+
+	sem2 = make(chan struct{}, int64(runtime.NumCPU()))
 
 	for {
 
@@ -51,11 +56,12 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 		buf := linesPool.Get().(*[]byte)
 
 		b := *buf
+
 		n, err := r.Read(b)
 		*buf = b[:n]
 
 		if err != nil && err != io.EOF {
-			log.Warning(err, n)
+			log.Logger.Warning(err, n)
 			continue
 		}
 
@@ -82,7 +88,7 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 				sem.Release(1)
 			}()
 
-			ParserChunk(buf, &linesPool, &stringPool, startTime, endTime)
+			ParserChunk(&sem2, buf, &linesPool, &stringPool, startTime, endTime)
 		}()
 
 	}
@@ -91,7 +97,7 @@ func ProcessFile(ctx context.Context, f *os.File, startTime *time.Time, endTime 
 	return nil
 }
 
-func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, startTime *time.Time, endTime *time.Time) {
+func ParserChunk(sem *chan struct{}, chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, startTime *time.Time, endTime *time.Time) {
 
 	var wg2 sync.WaitGroup
 
@@ -101,7 +107,6 @@ func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, sta
 	linesPool.Put(chunk)
 
 	logsSlice := splitLines(*logs)
-	// strings.Split(*logs, "\n")
 
 	stringPool.Put(logs)
 
@@ -109,8 +114,14 @@ func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, sta
 
 	for i := 0; i < n; i++ {
 		wg2.Add(1)
+		*sem <- struct{}{}
+
 		go func(l string) {
-			defer wg2.Done()
+
+			defer func() {
+				wg2.Done()
+				<-*sem
+			}()
 
 			if len(l) != 0 {
 				_, err := regex.LogParse(l)
@@ -118,8 +129,8 @@ func ParserChunk(chunk *[]byte, linesPool *sync.Pool, stringPool *sync.Pool, sta
 				if err != nil {
 					m.Lock()
 
-					log.Error(err.Error())
-					log.Info(l)
+					log.Logger.Error(err.Error())
+					log.Logger.Info(l)
 
 					m.Unlock()
 				}

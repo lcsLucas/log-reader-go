@@ -5,6 +5,11 @@ ARG uid=1000
 
 WORKDIR /go/src/log-reader-go
 
-RUN adduser -D -H -u 1000 -s /bin/bash ${user} -G www-data
+RUN apk add --no-cache \
+    bash
+
+RUN adduser -D -u 1000 -s /bin/bash ${user}
 
 USER ${user}
+
+ENV HOME /home/${user}

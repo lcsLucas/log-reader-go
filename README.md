@@ -17,4 +17,4 @@ Log end date argument (2006-01-02 OR 2006-01-02T15:04:05)
 
 Usage example:
 
-    go run ./cmd/main.go -path "/var/log/log-reader-go/access.log" -start "2022-01-01" -end "2022-21-31"
+    go run ./cmd/main.go -path "/var/log/log-reader-go/access.log" -start "2022-01-01" -end "2022-12-31"
