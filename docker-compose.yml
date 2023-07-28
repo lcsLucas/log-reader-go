@@ -37,6 +37,8 @@ services:
         reservations:
           cpus: '2.00'
     # memory: 20M
+    env_file:
+      - .env
     networks:
       - reader-network
     volumes:

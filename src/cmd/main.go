@@ -6,6 +6,7 @@ import (
 	"log-reader-go/internal/config"
 	"log-reader-go/internal/log"
 	"log-reader-go/internal/utils/args"
+	"log-reader-go/internal/utils/env"
 	"log-reader-go/internal/utils/file"
 	"log-reader-go/internal/utils/regex"
 	file2 "log-reader-go/pkg/file"
@@ -119,6 +120,8 @@ func main() {
 func init() {
 	startTimeExec = time.Now()
 	log.Logger.Info("Started")
+
+	env.Load()
 }
 
 func end() {

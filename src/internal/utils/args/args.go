@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"log-reader-go/internal/config"
+	"os"
 	"time"
 )
 
@@ -17,10 +18,26 @@ func Read(cLog *config.LogFile) error {
 	flag.Parse()
 
 	if len(*filenameArg) <= 0 {
-		return errors.New("give command line \"path\" argument")
+		envFile := os.Getenv("ENV_FILE")
+
+		if len(envFile) > 0 {
+			*filenameArg = "/var/log/" + os.Getenv("ENV_PATH") + "/" + envFile
+		} else {
+			return errors.New("give command line \"path\" argument")
+		}
+
 	}
 
 	cLog.Filename = *filenameArg
+
+	if len(*strLogStartTimeArg) <= 0 {
+		envStartTime := os.Getenv("ENV_STARTTIME")
+
+		if len(envStartTime) > 0 {
+			*strLogStartTimeArg = envStartTime
+		}
+
+	}
 
 	if len(*strLogStartTimeArg) > 0 {
 		var logStartTime time.Time
@@ -36,6 +53,15 @@ func Read(cLog *config.LogFile) error {
 		}
 
 		cLog.LogStartTime = &logStartTime
+
+	}
+
+	if len(*strLogEndTimeArg) <= 0 {
+		envEndTime := os.Getenv("ENV_ENDTIME")
+
+		if len(envEndTime) > 0 {
+			*strLogEndTimeArg = envEndTime
+		}
 
 	}
 
