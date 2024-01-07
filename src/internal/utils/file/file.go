@@ -3,8 +3,19 @@ package file
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 )
+
+func OpenFile(filename string) (f *os.File, err error) {
+	f, err = os.Open(filename)
+	return
+}
+
+func StatFile(f *os.File) (stat fs.FileInfo, err error) {
+	stat, err = f.Stat()
+	return
+}
 
 func ReadLine(f *os.File, offset uint64, back bool) (b []byte, err error) {
 	lastLineSize := 0

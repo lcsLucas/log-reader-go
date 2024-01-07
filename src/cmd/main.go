@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log-reader-go/internal/config"
 	"log-reader-go/internal/log"
 	"log-reader-go/internal/utils/args"
 	"log-reader-go/internal/utils/env"
 	"log-reader-go/internal/utils/file"
-	"log-reader-go/internal/utils/regex"
+	"log-reader-go/internal/validate"
 	file2 "log-reader-go/pkg/file"
 	"os"
 	"os/signal"
@@ -20,91 +19,70 @@ var (
 	cLog          config.LogFile
 )
 
+func catchError(err error) {
+	if err != nil {
+		log.Logger.Error(err.Error())
+		os.Exit(-1)
+	}
+}
+
+func checkDateLog(f *os.File, t *time.Time, offset int64) error {
+	if t != nil {
+		lineRead, err := file.ReadLine(f, uint64(offset), true)
+
+		if err != nil {
+			return err
+		}
+
+		if offset == 0 {
+			err = validate.ValidateDateRangeLogs(cLog.LogStartTime, lineRead, false)
+		} else {
+			err = validate.ValidateDateRangeLogs(cLog.LogStartTime, lineRead, true)
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func main() {
+	var err error
+
 	defer end()
+
+	// env load
+	err = env.Load()
+	catchError(err)
 
 	// elastic.Eae()
 
-	/** Lendo os argumentos passados */
-	err := args.Read(&cLog)
+	// flags read
+	err = args.Read(&cLog)
+	catchError(err)
 
-	if err != nil {
-		log.Logger.Error(err.Error())
-		return
-	}
-
-	/** Abrindo o arquivo de log */
-	f, err := os.Open(cLog.Filename)
-
-	if err != nil {
-		log.Logger.Error(err.Error())
-		return
-	}
+	// file open
+	f, err := file.OpenFile(cLog.Filename)
+	catchError(err)
 
 	defer f.Close()
 
-	filestat, err := f.Stat()
+	// stat file
+	stat, err := file.StatFile(f)
+	catchError(err)
 
-	if err != nil {
-		log.Logger.Error(err.Error())
-		return
-	}
+	cLog.Name = stat.Name()
+	cLog.Size = stat.Size()
 
-	cLog.Name = filestat.Name()
-	cLog.Size = filestat.Size()
+	// check initial date range of logs
+	err = checkDateLog(f, cLog.LogStartTime, cLog.Size-1)
+	catchError(err)
 
-	/** Validando a data ínicio com os registros do log */
-	if cLog.LogStartTime != nil {
+	// check final date range of logs
+	err = checkDateLog(f, cLog.LogEndTime, 0)
+	catchError(err)
 
-		offset := cLog.Size - 1
-
-		lastLine, err := file.ReadLine(f, uint64(offset), true)
-
-		if err != nil {
-			log.Logger.Error(err.Error())
-			return
-		}
-
-		reg, err := regex.LogParse(string(lastLine))
-
-		if err != nil {
-			log.Logger.Error(err.Error())
-			return
-		}
-
-		if reg.Date.Before(*cLog.LogStartTime) {
-			log.Logger.Error(errors.New("log time cannot be earlier than start time"))
-			return
-		}
-
-	}
-
-	/** Validando a data final com os registros do log */
-	if cLog.LogEndTime != nil {
-
-		offset := 0
-
-		firstLine, err := file.ReadLine(f, uint64(offset), false)
-
-		if err != nil {
-			log.Logger.Error(err.Error())
-			return
-		}
-
-		reg, err := regex.LogParse(string(firstLine))
-
-		if err != nil {
-			log.Logger.Error(err.Error())
-			return
-		}
-
-		if reg.Date.After(*cLog.LogEndTime) {
-			log.Logger.Error(errors.New("log time cannot be earlier than start time"))
-			return
-		}
-
-	}
-
+	// graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
@@ -114,14 +92,13 @@ func main() {
 		cancel()
 	}()
 
+	//
 	file2.ProcessFile(ctx, f, cLog.LogStartTime, cLog.LogEndTime)
 }
 
 func init() {
 	startTimeExec = time.Now()
 	log.Logger.Info("Started")
-
-	env.Load()
 }
 
 func end() {
