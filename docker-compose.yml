@@ -8,35 +8,35 @@ services:
     restart: always
     environment:
       - discovery.type=single-node
-      # - node.name=es02
-      # - cluster.name=el_cluster01
-      # - xpack.security.enabled=false
-      # - ELASTICSEARCH_HOSTS=http://0.0.0.0:9200
-      # - http.host=0.0.0.0
-      # - transport.host=127.0.0.1
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - http.host=0.0.0.0
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - ELASTICSEARCH_HOSTS=http://0.0.0.0:9200
+      - ELASTICSEARCH_USER=elastic
+      - ELASTICSEARCH_PASSWORD=elastic123
+      - STACK_VERSION=8.8.0
+    volumes:
+      - esdata1:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     ports:
       - "9200:9200"
       - "9300:9300"
-    # volumes:
-      # - ./data/elasticsearch:/usr/share/elasticsearch/config
     networks:
       - reader-network
   reader:
     build:
       context: .
-      dockerfile: "./Dockerfile.development"
+      dockerfile: "./go.Dockerfile"
     container_name: reader-go
     stdin_open: true
     tty: true
     restart: on-failure
-    deploy:
-      resources:
-        limits:
-          cpus: '2.00'
-        # memory: 50M
-        reservations:
-          cpus: '2.00'
-    # memory: 20M
     env_file:
       - .env
     networks:
@@ -44,8 +44,13 @@ services:
     volumes:
       - ./src:/go/src/log-reader-go
       - ./.vscode:/go/src/log-reader-go
-      - ./data/logs:/var/log/log-reader-go
+      - ./data/log-reader-go:/var/log/log-reader-go
       - ./data/elasticsearch:/var/log/elasticsearch
+
+volumes:
+  esdata1:
+    driver: local
+
 networks:
   reader-network:
     driver: bridge

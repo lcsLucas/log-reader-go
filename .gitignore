@@ -1,4 +1,8 @@
-data
+data/elasticsearch/*
+data/log-reader-go/*
+!data/elasticsearch/.gitkeep
+!data/log-reader-go/.gitkeep
+
 build
 
 # If you prefer the allow list template instead of the deny list, see community template:
